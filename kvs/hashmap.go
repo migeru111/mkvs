@@ -2,24 +2,19 @@ package kvs
 
 import "sync"
 
-// HashMap is a thread-safe in-memory KVS backed by a Go map + RWMutex.
-//
-// Read-heavy workloads benefit from RLock allowing concurrent reads.
-// Write operations take an exclusive lock.
 type HashMap struct {
-	mu   sync.RWMutex
+	mu   sync.Mutex
 	data map[string]string
 }
 
-// NewHashMap returns a new, empty HashMap KVS.
 func NewHashMap() *HashMap {
 	return &HashMap{data: make(map[string]string)}
 }
 
 func (h *HashMap) Get(key string) (string, bool) {
-	h.mu.RLock()
+	h.mu.Lock()
 	v, ok := h.data[key]
-	h.mu.RUnlock()
+	h.mu.Unlock()
 	return v, ok
 }
 
@@ -41,9 +36,9 @@ func (h *HashMap) Delete(key string) bool {
 }
 
 func (h *HashMap) Len() int {
-	h.mu.RLock()
+	h.mu.Lock()
 	n := len(h.data)
-	h.mu.RUnlock()
+	h.mu.Unlock()
 	return n
 }
 

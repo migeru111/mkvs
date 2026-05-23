@@ -38,7 +38,7 @@ func main() {
 	fmt.Println(strings.Repeat("=", 60))
 	fmt.Println("  mkvs — YCSB-like Benchmark")
 	fmt.Println(strings.Repeat("=", 60))
-	fmt.Printf("  Store       : HashMap (sync.RWMutex)\n")
+	fmt.Printf("  Store       : HashMap (sync.Mutex)\n")
 	fmt.Printf("  Distribution: %s\n", *dist)
 	fmt.Printf("  Records     : %d\n", *records)
 	fmt.Printf("  Operations  : %d per workload\n", *ops)
