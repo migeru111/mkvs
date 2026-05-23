@@ -1,16 +1,3 @@
-// bench is a YCSB-inspired benchmark tool for mkvs.
-//
-// Usage:
-//
-//	go run ./cmd/bench [flags]
-//
-// Example — run all workloads with 8 threads:
-//
-//	go run ./cmd/bench -all -threads 8
-//
-// Example — run workload A with Zipfian key distribution:
-//
-//	go run ./cmd/bench -workload A -dist zipfian -ops 500000
 package main
 
 import (
@@ -27,7 +14,6 @@ func main() {
 	var (
 		records   = flag.Int("records", 100_000, "records to pre-load")
 		ops       = flag.Int("ops", 500_000, "operations to run per workload")
-		threads   = flag.Int("threads", 4, "concurrent goroutines")
 		valueSize = flag.Int("valuesize", 100, "value size in bytes")
 		workload  = flag.String("workload", "A", "workload A/B/C/D/F")
 		dist      = flag.String("dist", "zipfian", "key distribution: zipfian or uniform")
@@ -38,11 +24,10 @@ func main() {
 	fmt.Println(strings.Repeat("=", 60))
 	fmt.Println("  mkvs — YCSB-like Benchmark")
 	fmt.Println(strings.Repeat("=", 60))
-	fmt.Printf("  Store       : HashMap (no lock)\n")
+	fmt.Printf("  Store       : HashMap (no lock, sequential)\n")
 	fmt.Printf("  Distribution: %s\n", *dist)
 	fmt.Printf("  Records     : %d\n", *records)
 	fmt.Printf("  Operations  : %d per workload\n", *ops)
-	fmt.Printf("  Threads     : %d\n", *threads)
 	fmt.Printf("  Value size  : %d bytes\n", *valueSize)
 	fmt.Println(strings.Repeat("=", 60))
 	fmt.Println()
@@ -50,7 +35,6 @@ func main() {
 	cfg := benchmark.Config{
 		RecordCount:    *records,
 		OperationCount: *ops,
-		Threads:        *threads,
 		ValueSize:      *valueSize,
 		Distribution:   benchmark.Distribution(*dist),
 	}
@@ -112,8 +96,8 @@ func printSummary(results []benchmark.Result) {
 		fmt.Printf("  %-12s  %9.0f ops/s  %10v  %10v\n",
 			benchmark.Describe(r.Workload),
 			r.Throughput,
-			combined.Round(time.Microsecond),
-			combined99.Round(time.Microsecond),
+			fmtDuration(combined),
+			fmtDuration(combined99),
 		)
 	}
 	fmt.Println(strings.Repeat("=", 60))
@@ -132,6 +116,16 @@ func combinedAvg(r benchmark.Result) time.Duration {
 		return 0
 	}
 	return time.Duration(total / count)
+}
+
+func fmtDuration(d time.Duration) string {
+	if d < time.Microsecond {
+		return fmt.Sprintf("%dns", d.Nanoseconds())
+	}
+	if d < time.Millisecond {
+		return fmt.Sprintf("%dµs", d.Microseconds())
+	}
+	return fmt.Sprintf("%dms", d.Milliseconds())
 }
 
 // combinedP99 returns the max P99 across all operation types.

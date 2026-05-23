@@ -2,8 +2,6 @@ package benchmark
 
 import (
 	"fmt"
-	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/migeru111/mkvs/kvs"
@@ -11,11 +9,10 @@ import (
 
 // Config holds all benchmark parameters.
 type Config struct {
-	RecordCount    int        // number of records inserted in the load phase
-	OperationCount int        // number of operations in the run phase
-	Threads        int        // number of concurrent goroutines
-	ValueSize      int        // size of each value in bytes
-	Workload       Workload   // YCSB workload preset
+	RecordCount    int          // number of records inserted in the load phase
+	OperationCount int          // number of operations in the run phase
+	ValueSize      int          // size of each value in bytes
+	Workload       Workload     // YCSB workload preset
 	Distribution   Distribution // key selection distribution
 }
 
@@ -45,78 +42,63 @@ func Run(store kvs.KVS, cfg Config) Result {
 	fmt.Printf("[Load] done in %v\n\n", time.Since(t0).Round(time.Millisecond))
 
 	// --- Run phase ---
-	opsPerThread := cfg.OperationCount / cfg.Threads
-	totalExpected := opsPerThread * cfg.Threads
+	readRec := NewRecorder(cfg.OperationCount)
+	updateRec := NewRecorder(cfg.OperationCount)
+	insertRec := NewRecorder(cfg.OperationCount)
+	rmwRec := NewRecorder(cfg.OperationCount)
 
-	readRec := NewRecorder(totalExpected)
-	updateRec := NewRecorder(totalExpected)
-	insertRec := NewRecorder(totalExpected / 10)
-	rmwRec := NewRecorder(totalExpected)
+	g := NewGenerator(cfg.Distribution, int64(cfg.RecordCount))
+	insertSeq := cfg.RecordCount
+	totalOps := 0
 
-	var totalOps int64
-	// Monotonically increasing counter for insert keys (beyond initial load).
-	var insertSeq uint64 = uint64(cfg.RecordCount)
-
-	var wg sync.WaitGroup
 	start := time.Now()
 
-	for t := 0; t < cfg.Threads; t++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			g := NewGenerator(cfg.Distribution, int64(cfg.RecordCount))
+	for i := 0; i < cfg.OperationCount; i++ {
+		op := g.Float64()
+		cumR := wl.read
+		cumU := cumR + wl.update
+		cumI := cumU + wl.insert
 
-			for i := 0; i < opsPerThread; i++ {
-				op := g.Float64()
-				cumR := wl.read
-				cumU := cumR + wl.update
-				cumI := cumU + wl.insert
+		switch {
+		case op < cumR:
+			key := g.Next()
+			t0 := time.Now()
+			_, _ = store.Get(key)
+			readRec.Add(time.Since(t0))
 
-				switch {
-				case op < cumR:
-					key := g.Next()
-					t0 := time.Now()
-					_, _ = store.Get(key)
-					readRec.Add(time.Since(t0))
+		case op < cumU:
+			key := g.Next()
+			t0 := time.Now()
+			_ = store.Set(key, value)
+			updateRec.Add(time.Since(t0))
 
-				case op < cumU:
-					key := g.Next()
-					t0 := time.Now()
-					_ = store.Set(key, value)
-					updateRec.Add(time.Since(t0))
+		case op < cumI:
+			key := KeyForIndex(insertSeq)
+			insertSeq++
+			t0 := time.Now()
+			_ = store.Set(key, value)
+			insertRec.Add(time.Since(t0))
 
-				case op < cumI:
-					// Atomic increment ensures each goroutine inserts a unique key.
-					idx := atomic.AddUint64(&insertSeq, 1) - 1
-					key := KeyForIndex(int(idx))
-					t0 := time.Now()
-					_ = store.Set(key, value)
-					insertRec.Add(time.Since(t0))
-
-				default: // RMW: read then write back
-					key := g.Next()
-					t0 := time.Now()
-					v, ok := store.Get(key)
-					if ok {
-						_ = store.Set(key, v)
-					}
-					rmwRec.Add(time.Since(t0))
-				}
-
-				atomic.AddInt64(&totalOps, 1)
+		default: // RMW: read then write back
+			key := g.Next()
+			t0 := time.Now()
+			v, ok := store.Get(key)
+			if ok {
+				_ = store.Set(key, v)
 			}
-		}()
+			rmwRec.Add(time.Since(t0))
+		}
+
+		totalOps++
 	}
 
-	wg.Wait()
 	elapsed := time.Since(start)
 
-	ops := atomic.LoadInt64(&totalOps)
 	return Result{
 		Workload:   cfg.Workload,
 		Elapsed:    elapsed,
-		TotalOps:   ops,
-		Throughput: float64(ops) / elapsed.Seconds(),
+		TotalOps:   int64(totalOps),
+		Throughput: float64(totalOps) / elapsed.Seconds(),
 		Read:       readRec.Stats(),
 		Update:     updateRec.Stats(),
 		Insert:     insertRec.Stats(),
