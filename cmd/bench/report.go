@@ -13,11 +13,12 @@ import (
 )
 
 func gitRef() string {
-	id, err := exec.Command("git", "rev-parse", "--short", "HEAD").Output()
+	// git describe --tags: タグがあれば "hashmap-mutex"、タグより後なら "hashmap-mutex-3-gabcdef" を返す
+	out, err := exec.Command("git", "describe", "--tags", "--always").Output()
 	if err != nil {
 		return "unknown"
 	}
-	ref := strings.TrimSpace(string(id))
+	ref := strings.TrimSpace(string(out))
 
 	dirty, _ := exec.Command("git", "status", "--porcelain").Output()
 	if len(strings.TrimSpace(string(dirty))) > 0 {
