@@ -1,0 +1,62 @@
+============================================================
+  mkvs Benchmark Report
+============================================================
+  Date        : 2026-05-24 08:49:13
+  Commit      : hashmap-rwmutex
+  Distribution: zipfian
+  Records     : 100000
+  Operations  : 500000 per workload
+  Value size  : 100 bytes
+  Workers     : 8
+============================================================
+
+--- Workload A: 50% Read / 50% Update (update-heavy) ---
+Elapsed    : 212ms
+Throughput : 2356475 ops/sec
+
+Latency breakdown:
+  Read  : n=250655    avg=160ns       p50=65ns        p95=260ns       p99=2µs         p999=6µs         max=59µs
+  Update: n=249345    avg=6µs         p50=90ns        p95=373ns       p99=275µs       p999=747µs       max=1.714ms
+
+--- Workload B: 95% Read / 5%  Update (read-mostly) ---
+Elapsed    : 212ms
+Throughput : 2362408 ops/sec
+
+Latency breakdown:
+  Read  : n=475055    avg=923ns       p50=111ns       p95=868ns       p99=24µs        p999=59µs        max=342µs
+  Update: n=24945     avg=42µs        p50=2µs         p95=403µs       p99=727µs       p999=1.023ms     max=1.707ms
+
+--- Workload C: 100% Read (read-only) ---
+Elapsed    : 156ms
+Throughput : 3215014 ops/sec
+
+Latency breakdown:
+  Read  : n=500000    avg=129ns       p50=109ns       p95=250ns       p99=358ns       p999=597ns       max=240µs
+
+--- Workload D: 95% Read / 5%  Insert (read-latest) ---
+Elapsed    : 224ms
+Throughput : 2227715 ops/sec
+
+Latency breakdown:
+  Read  : n=475011    avg=926ns       p50=104ns       p95=803ns       p99=24µs        p999=67µs        max=199µs
+  Insert: n=24989     avg=47µs        p50=2µs         p95=455µs       p99=803µs       p999=1.094ms     max=1.476ms
+
+--- Workload F: 50% Read / 50% RMW (read-modify-write) ---
+Elapsed    : 224ms
+Throughput : 2236055 ops/sec
+
+Latency breakdown:
+  Read  : n=249867    avg=149ns       p50=65ns        p95=297ns       p99=1µs         p999=5µs         max=190µs
+  RMW   : n=250133    avg=6µs         p50=123ns       p95=554ns       p99=259µs       p999=817µs       max=2.184ms
+
+============================================================
+  Summary
+============================================================
+  Workload        Throughput     Avg Lat     P99 Lat
+------------------------------------------------------------
+  A: 50% Read / 50% Update (update-heavy)    2356475 ops/s         3µs       274µs
+  B: 95% Read / 5%  Update (read-mostly)    2362408 ops/s         2µs       727µs
+  C: 100% Read (read-only)    3215014 ops/s       129ns       358ns
+  D: 95% Read / 5%  Insert (read-latest)    2227715 ops/s         3µs       803µs
+  F: 50% Read / 50% RMW (read-modify-write)    2236055 ops/s         3µs       259µs
+============================================================
