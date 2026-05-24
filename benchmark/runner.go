@@ -17,10 +17,12 @@ type Config struct {
 	Workload       Workload     // YCSB workload preset
 	Distribution   Distribution // key selection distribution
 	Concurrency    int          // number of parallel worker goroutines (0 or 1 = sequential)
+	StoreName      string       // display name of the KVS implementation under test
 }
 
 // Result holds the benchmark outcome.
 type Result struct {
+	StoreName  string
 	Workload   Workload
 	Workers    int
 	Elapsed    time.Duration
@@ -115,6 +117,7 @@ func Run(store kvs.KVS, cfg Config) Result {
 	elapsed := time.Since(start)
 
 	return Result{
+		StoreName:  cfg.StoreName,
 		Workload:   cfg.Workload,
 		Workers:    workers,
 		Elapsed:    elapsed,

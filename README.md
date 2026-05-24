@@ -25,7 +25,8 @@ go run ./cmd/bench
 | --- | --- | --- |
 | `-workload` | `A` | ワークロード（A/B/C/D/F） |
 | `-all` | `false` | 全ワークロードを順番に実行 |
-| `-workers` | `1` | 並列ワーカー数 |
+| `-store` | `all` | KVS 実装（`all` / `mutex` / `rwmutex`） |
+| `-workers` | `0` | 並列ワーカー数（`0` = 1/2/4/8 のスケーリング計測） |
 | `-records` | `100000` | ロードフェーズで投入するレコード数 |
 | `-ops` | `500000` | 実行するオペレーション数 |
 | `-valuesize` | `100` | バリューのサイズ（バイト） |
@@ -56,28 +57,32 @@ go run ./cmd/bench -all -dist uniform
 
 ## レポート
 
-実行ごとに `reports/` にテキストファイルが生成されます。ファイル名にはタイムスタンプとコミット ID が含まれます。
+実行ごとに `reports/` にテキストファイルが生成されます。ファイル名にはタイムスタンプと git の参照（タグまたはコミット ID）が含まれます。
 
 ```text
 reports/bench_20260524_143021_abc1234.txt
 ```
 
-未コミットの変更がある状態で実行した場合は `-dirty` が付きます。
+未コミットの変更がある状態で実行した場合は `-dirty` が付きます（`.gitignore` で除外済み）。
 
 ```text
-reports/bench_20260524_143021_abc1234-dirty.txt
+reports/bench_20260524_143021_abc1234-dirty.txt  ← git 管理外
 ```
 
-### レポートを Git で管理する
+レポート内には KVS 実装名（`HashMap/Mutex`、`HashMap/RWMutex` など）が記録されるため、複数実装の比較結果を1ファイルにまとめられます。
 
-`bench.sh` を使うと、ベンチマーク実行とレポートのコミットを1コマンドで行えます。
+### bench.sh
+
+`bench.sh` はフラグをそのまま渡せるショートカットです。
 
 ```bash
-./bench.sh -all -workers 4
+./bench.sh -all
+./bench.sh -store rwmutex -workers 4
 ```
 
-内部でやっていること：
+重要な結果を残したいときは手動でコミットします。
 
-1. ベンチマーク実行（レポート生成）
-2. `reports/` を `git add`
-3. `bench: report for <commitID>` でコミット
+```bash
+git add reports/
+git commit -m "bench: ..."
+```

@@ -11,6 +11,27 @@ import (
 	"github.com/migeru111/mkvs/kvs"
 )
 
+type storeEntry struct {
+	name string
+	new  func() kvs.KVS
+}
+
+var allStores = []storeEntry{
+	{"HashMap/Mutex", func() kvs.KVS { return kvs.NewHashMapMutex() }},
+	{"HashMap/RWMutex", func() kvs.KVS { return kvs.NewHashMapRWMutex() }},
+}
+
+func selectStores(flag string) []storeEntry {
+	switch strings.ToLower(flag) {
+	case "mutex":
+		return allStores[:1]
+	case "rwmutex":
+		return allStores[1:]
+	default:
+		return allStores
+	}
+}
+
 func main() {
 	var (
 		records   = flag.Int("records", 100_000, "records to pre-load")
@@ -19,21 +40,26 @@ func main() {
 		workload  = flag.String("workload", "A", "workload A/B/C/D/F")
 		dist      = flag.String("dist", "zipfian", "key distribution: zipfian or uniform")
 		all       = flag.Bool("all", false, "run all workloads sequentially")
-		workers   = flag.Int("workers", 0, "goroutine数 (0=1/2/4/8のスケーリング計測)")
+		workers    = flag.Int("workers", 0, "goroutine数 (0=スケーリング計測)")
+		maxWorkers = flag.Int("maxworkers", 8, "スケーリング計測の最大ワーカー数 (2の累乗まで)")
+		store      = flag.String("store", "all", "KVS実装 (all/mutex/rwmutex)")
 	)
 	flag.Parse()
 
-	// workers=0 のとき自動的に複数スレッド数で計測する
-	scalingSteps := []int{1, 2, 4, 8}
+	var scalingSteps []int
 	if *workers != 0 {
 		scalingSteps = []int{*workers}
+	} else {
+		for w := 1; w <= *maxWorkers; w *= 2 {
+			scalingSteps = append(scalingSteps, w)
+		}
 	}
 
 	cfg := benchmark.Config{
-		RecordCount:  *records,
+		RecordCount:    *records,
 		OperationCount: *ops,
-		ValueSize:    *valueSize,
-		Distribution: benchmark.Distribution(*dist),
+		ValueSize:      *valueSize,
+		Distribution:   benchmark.Distribution(*dist),
 	}
 
 	var workloads []benchmark.Workload
@@ -43,15 +69,20 @@ func main() {
 		workloads = []benchmark.Workload{benchmark.Workload(strings.ToUpper(*workload))}
 	}
 
+	stores := selectStores(*store)
+
 	var results []benchmark.Result
-	for _, w := range scalingSteps {
-		cfg.Concurrency = w
-		for _, wl := range workloads {
-			cfg.Workload = wl
-			store := kvs.NewHashMap()
-			res := benchmark.Run(store, cfg)
-			_ = store.Close()
-			results = append(results, res)
+	for _, s := range stores {
+		cfg.StoreName = s.name
+		for _, w := range scalingSteps {
+			cfg.Concurrency = w
+			for _, wl := range workloads {
+				cfg.Workload = wl
+				store := s.new()
+				res := benchmark.Run(store, cfg)
+				_ = store.Close()
+				results = append(results, res)
+			}
 		}
 	}
 
