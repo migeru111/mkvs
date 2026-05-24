@@ -1,0 +1,18 @@
+============================================================
+  mkvs Benchmark Report
+============================================================
+  Date        : 2026-05-24 08:45:50
+  Commit      : hashmap-mutex-1-ge4e286d
+  Distribution: zipfian
+  Records     : 100000
+  Operations  : 50000 per workload
+  Value size  : 100 bytes
+  Workers     : 1
+============================================================
+
+--- Workload C: 100% Read (read-only) ---
+Elapsed    : 18ms
+Throughput : 2716242 ops/sec
+
+Latency breakdown:
+  Read  : n=50000     avg=83ns        p50=60ns        p95=178ns       p99=327ns       p999=549ns       max=46µs
