@@ -1,0 +1,126 @@
+============================================================
+  mkvs Benchmark Report
+============================================================
+  Date        : 2026-05-24 21:54:34
+  Commit      : 5b5fecd
+  Distribution: zipfian
+  Records     : 100000
+  Operations  : 500000 per workload
+  Value size  : 100 bytes
+  Workers     : scaling [1 2 4 8 16 32]
+============================================================
+
+--- [HashMap/Mutex] Workload A: 50% Read / 50% Update (update-heavy)  workers=1 ---
+Elapsed    : 105ms
+Throughput : 4781536 ops/sec
+
+Latency breakdown:
+  Read  : n=250070    avg=41ns        p50=42ns        p95=83ns        p99=208ns       p999=375ns       max=39µs
+  Update: n=249930    avg=43ns        p50=42ns        p95=84ns        p99=208ns       p999=375ns       max=8µs
+
+--- [HashMap/Mutex] Workload A: 50% Read / 50% Update (update-heavy)  workers=2 ---
+Elapsed    : 93ms
+Throughput : 5401870 ops/sec
+
+Latency breakdown:
+  Read  : n=250384    avg=146ns       p50=83ns        p95=208ns       p99=500ns       p999=8µs         max=260µs
+  Update: n=249616    avg=159ns       p50=84ns        p95=209ns       p99=583ns       p999=8µs         max=98µs
+
+--- [HashMap/Mutex] Workload A: 50% Read / 50% Update (update-heavy)  workers=4 ---
+Elapsed    : 73ms
+Throughput : 6813633 ops/sec
+
+Latency breakdown:
+  Read  : n=250224    avg=380ns       p50=125ns       p95=458ns       p99=8µs         p999=21µs        max=68µs
+  Update: n=249776    avg=396ns       p50=166ns       p95=459ns       p99=8µs         p999=21µs        max=73µs
+
+--- [HashMap/Mutex] Workload A: 50% Read / 50% Update (update-heavy)  workers=8 ---
+Elapsed    : 102ms
+Throughput : 4906547 ops/sec
+
+Latency breakdown:
+  Read  : n=250093    avg=1µs         p50=166ns       p95=6µs         p99=30µs        p999=65µs        max=148µs
+  Update: n=249907    avg=1µs         p50=167ns       p95=7µs         p99=31µs        p999=67µs        max=182µs
+
+--- [HashMap/Mutex] Workload A: 50% Read / 50% Update (update-heavy)  workers=16 ---
+Elapsed    : 103ms
+Throughput : 4865637 ops/sec
+
+Latency breakdown:
+  Read  : n=249636    avg=3µs         p50=166ns       p95=15µs        p99=68µs        p999=152µs       max=460µs
+  Update: n=250364    avg=3µs         p50=167ns       p95=16µs        p99=69µs        p999=153µs       max=353µs
+
+--- [HashMap/Mutex] Workload A: 50% Read / 50% Update (update-heavy)  workers=32 ---
+Elapsed    : 107ms
+Throughput : 4657167 ops/sec
+
+Latency breakdown:
+  Read  : n=250110    avg=6µs         p50=166ns       p95=26µs        p99=162µs       p999=380µs       max=935µs
+  Update: n=249890    avg=6µs         p50=167ns       p95=27µs        p99=162µs       p999=380µs       max=1.021ms
+
+--- [HashMap/RWMutex] Workload A: 50% Read / 50% Update (update-heavy)  workers=1 ---
+Elapsed    : 110ms
+Throughput : 4527010 ops/sec
+
+Latency breakdown:
+  Read  : n=250013    avg=47ns        p50=42ns        p95=125ns       p99=250ns       p999=334ns       max=38µs
+  Update: n=249987    avg=56ns        p50=42ns        p95=166ns       p99=250ns       p999=375ns       max=11µs
+
+--- [HashMap/RWMutex] Workload A: 50% Read / 50% Update (update-heavy)  workers=2 ---
+Elapsed    : 149ms
+Throughput : 3358615 ops/sec
+
+Latency breakdown:
+  Read  : n=250345    avg=167ns       p50=83ns        p95=625ns       p99=2µs         p999=5µs         max=37µs
+  Update: n=249655    avg=564ns       p50=125ns       p95=1µs         p99=12µs        p999=21µs        max=353µs
+
+--- [HashMap/RWMutex] Workload A: 50% Read / 50% Update (update-heavy)  workers=4 ---
+Elapsed    : 153ms
+Throughput : 3276954 ops/sec
+
+Latency breakdown:
+  Read  : n=249154    avg=221ns       p50=83ns        p95=917ns       p99=3µs         p999=8µs         max=50µs
+  Update: n=250846    avg=2µs         p50=125ns       p95=13µs        p99=36µs        p999=67µs        max=204µs
+
+--- [HashMap/RWMutex] Workload A: 50% Read / 50% Update (update-heavy)  workers=8 ---
+Elapsed    : 156ms
+Throughput : 3213010 ops/sec
+
+Latency breakdown:
+  Read  : n=250489    avg=220ns       p50=83ns        p95=917ns       p99=3µs         p999=8µs         max=48µs
+  Update: n=249511    avg=4µs         p50=125ns       p95=28µs        p99=98µs        p999=190µs       max=478µs
+
+--- [HashMap/RWMutex] Workload A: 50% Read / 50% Update (update-heavy)  workers=16 ---
+Elapsed    : 163ms
+Throughput : 3070347 ops/sec
+
+Latency breakdown:
+  Read  : n=250260    avg=239ns       p50=83ns        p95=1µs         p99=4µs         p999=8µs         max=25µs
+  Update: n=249740    avg=10µs        p50=125ns       p95=83µs        p99=229µs       p999=452µs       max=1.391ms
+
+--- [HashMap/RWMutex] Workload A: 50% Read / 50% Update (update-heavy)  workers=32 ---
+Elapsed    : 163ms
+Throughput : 3075978 ops/sec
+
+Latency breakdown:
+  Read  : n=250264    avg=238ns       p50=83ns        p95=1µs         p99=4µs         p999=8µs         max=69µs
+  Update: n=249736    avg=20µs        p50=125ns       p95=179µs       p99=504µs       p999=1.007ms     max=2.118ms
+
+======================================================================
+  Scaling: A: 50% Read / 50% Update (update-heavy)
+======================================================================
+  Store               Workers      Throughput     Avg Lat     P99 Lat
+--------------------------------------------------------------------
+  HashMap/Mutex             1      4781536 ops/s        41ns       208ns
+  HashMap/Mutex             2      5401870 ops/s       152ns       583ns
+  HashMap/Mutex             4      6813633 ops/s       387ns         8µs
+  HashMap/Mutex             8      4906547 ops/s         1µs        30µs
+  HashMap/Mutex            16      4865637 ops/s         2µs        69µs
+  HashMap/Mutex            32      4657167 ops/s         6µs       161µs
+  HashMap/RWMutex           1      4527010 ops/s        51ns       250ns
+  HashMap/RWMutex           2      3358615 ops/s       365ns        12µs
+  HashMap/RWMutex           4      3276954 ops/s       998ns        36µs
+  HashMap/RWMutex           8      3213010 ops/s         2µs        97µs
+  HashMap/RWMutex          16      3070347 ops/s         4µs       229µs
+  HashMap/RWMutex          32      3075978 ops/s         9µs       503µs
+======================================================================
