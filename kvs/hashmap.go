@@ -3,7 +3,7 @@ package kvs
 import "sync"
 
 type HashMap struct {
-	mu   sync.Mutex
+	mu   sync.RWMutex
 	data map[string]string
 }
 
@@ -12,9 +12,9 @@ func NewHashMap() *HashMap {
 }
 
 func (h *HashMap) Get(key string) (string, bool) {
-	h.mu.Lock()
+	h.mu.RLock()
 	v, ok := h.data[key]
-	h.mu.Unlock()
+	h.mu.RUnlock()
 	return v, ok
 }
 
@@ -36,9 +36,9 @@ func (h *HashMap) Delete(key string) bool {
 }
 
 func (h *HashMap) Len() int {
-	h.mu.Lock()
+	h.mu.RLock()
 	n := len(h.data)
-	h.mu.Unlock()
+	h.mu.RUnlock()
 	return n
 }
 
