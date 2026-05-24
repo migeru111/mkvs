@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -18,25 +19,16 @@ func main() {
 		workload  = flag.String("workload", "A", "workload A/B/C/D/F")
 		dist      = flag.String("dist", "zipfian", "key distribution: zipfian or uniform")
 		all       = flag.Bool("all", false, "run all workloads sequentially")
+		workers   = flag.Int("workers", 1, "number of parallel benchmark goroutines")
 	)
 	flag.Parse()
-
-	fmt.Println(strings.Repeat("=", 60))
-	fmt.Println("  mkvs — YCSB-like Benchmark")
-	fmt.Println(strings.Repeat("=", 60))
-	fmt.Printf("  Store       : HashMap (no lock, sequential)\n")
-	fmt.Printf("  Distribution: %s\n", *dist)
-	fmt.Printf("  Records     : %d\n", *records)
-	fmt.Printf("  Operations  : %d per workload\n", *ops)
-	fmt.Printf("  Value size  : %d bytes\n", *valueSize)
-	fmt.Println(strings.Repeat("=", 60))
-	fmt.Println()
 
 	cfg := benchmark.Config{
 		RecordCount:    *records,
 		OperationCount: *ops,
 		ValueSize:      *valueSize,
 		Distribution:   benchmark.Distribution(*dist),
+		Concurrency:    *workers,
 	}
 
 	var workloads []benchmark.Workload
@@ -50,57 +42,17 @@ func main() {
 	for _, wl := range workloads {
 		cfg.Workload = wl
 		store := kvs.NewHashMap()
-
-		fmt.Printf("--- Workload %s ---\n", benchmark.Describe(wl))
 		res := benchmark.Run(store, cfg)
 		_ = store.Close()
-
 		results = append(results, res)
-		printResult(res)
-		fmt.Println()
 	}
 
-	if len(results) > 1 {
-		printSummary(results)
+	path, err := writeReport(cfg, results)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "report: %v\n", err)
+		return
 	}
-}
-
-func printResult(res benchmark.Result) {
-	fmt.Printf("Elapsed    : %v\n", res.Elapsed.Round(time.Millisecond))
-	fmt.Printf("Throughput : %.0f ops/sec\n", res.Throughput)
-	fmt.Println()
-	fmt.Println("Latency breakdown:")
-	if !res.Read.Empty() {
-		fmt.Printf("  Read  : %s\n", res.Read)
-	}
-	if !res.Update.Empty() {
-		fmt.Printf("  Update: %s\n", res.Update)
-	}
-	if !res.Insert.Empty() {
-		fmt.Printf("  Insert: %s\n", res.Insert)
-	}
-	if !res.RMW.Empty() {
-		fmt.Printf("  RMW   : %s\n", res.RMW)
-	}
-}
-
-func printSummary(results []benchmark.Result) {
-	fmt.Println(strings.Repeat("=", 60))
-	fmt.Println("  Summary")
-	fmt.Println(strings.Repeat("=", 60))
-	fmt.Printf("  %-12s  %12s  %10s  %10s\n", "Workload", "Throughput", "Avg Lat", "P99 Lat")
-	fmt.Println(strings.Repeat("-", 60))
-	for _, r := range results {
-		combined := combinedAvg(r)
-		combined99 := combinedP99(r)
-		fmt.Printf("  %-12s  %9.0f ops/s  %10v  %10v\n",
-			benchmark.Describe(r.Workload),
-			r.Throughput,
-			fmtDuration(combined),
-			fmtDuration(combined99),
-		)
-	}
-	fmt.Println(strings.Repeat("=", 60))
+	fmt.Printf("\nReport saved: %s\n", path)
 }
 
 // combinedAvg returns a weighted average latency across all operation types.

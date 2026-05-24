@@ -2,6 +2,8 @@ package benchmark
 
 import (
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/migeru111/mkvs/kvs"
@@ -14,6 +16,7 @@ type Config struct {
 	ValueSize      int          // size of each value in bytes
 	Workload       Workload     // YCSB workload preset
 	Distribution   Distribution // key selection distribution
+	Concurrency    int          // number of parallel worker goroutines (0 or 1 = sequential)
 }
 
 // Result holds the benchmark outcome.
@@ -47,58 +50,74 @@ func Run(store kvs.KVS, cfg Config) Result {
 	insertRec := NewRecorder(cfg.OperationCount)
 	rmwRec := NewRecorder(cfg.OperationCount)
 
-	g := NewGenerator(cfg.Distribution, int64(cfg.RecordCount))
-	insertSeq := cfg.RecordCount
-	totalOps := 0
-
-	start := time.Now()
-
-	for i := 0; i < cfg.OperationCount; i++ {
-		op := g.Float64()
-		cumR := wl.read
-		cumU := cumR + wl.update
-		cumI := cumU + wl.insert
-
-		switch {
-		case op < cumR:
-			key := g.Next()
-			t0 := time.Now()
-			_, _ = store.Get(key)
-			readRec.Add(time.Since(t0))
-
-		case op < cumU:
-			key := g.Next()
-			t0 := time.Now()
-			_ = store.Set(key, value)
-			updateRec.Add(time.Since(t0))
-
-		case op < cumI:
-			key := KeyForIndex(insertSeq)
-			insertSeq++
-			t0 := time.Now()
-			_ = store.Set(key, value)
-			insertRec.Add(time.Since(t0))
-
-		default: // RMW: read then write back
-			key := g.Next()
-			t0 := time.Now()
-			v, ok := store.Get(key)
-			if ok {
-				_ = store.Set(key, v)
-			}
-			rmwRec.Add(time.Since(t0))
-		}
-
-		totalOps++
+	workers := cfg.Concurrency
+	if workers <= 1 {
+		workers = 1
 	}
 
+	opsPerWorker := cfg.OperationCount / workers
+	remainder := cfg.OperationCount % workers
+	insertSeq := int64(cfg.RecordCount)
+
+	var wg sync.WaitGroup
+	start := time.Now()
+
+	for w := 0; w < workers; w++ {
+		myOps := opsPerWorker
+		if w < remainder {
+			myOps++
+		}
+		wg.Add(1)
+		go func(ops int) {
+			defer wg.Done()
+			g := NewGenerator(cfg.Distribution, int64(cfg.RecordCount))
+			for i := 0; i < ops; i++ {
+				op := g.Float64()
+				cumR := wl.read
+				cumU := cumR + wl.update
+				cumI := cumU + wl.insert
+
+				switch {
+				case op < cumR:
+					key := g.Next()
+					t0 := time.Now()
+					_, _ = store.Get(key)
+					readRec.Add(time.Since(t0))
+
+				case op < cumU:
+					key := g.Next()
+					t0 := time.Now()
+					_ = store.Set(key, value)
+					updateRec.Add(time.Since(t0))
+
+				case op < cumI:
+					idx := atomic.AddInt64(&insertSeq, 1) - 1
+					key := KeyForIndex(int(idx))
+					t0 := time.Now()
+					_ = store.Set(key, value)
+					insertRec.Add(time.Since(t0))
+
+				default: // RMW: read then write back
+					key := g.Next()
+					t0 := time.Now()
+					v, ok := store.Get(key)
+					if ok {
+						_ = store.Set(key, v)
+					}
+					rmwRec.Add(time.Since(t0))
+				}
+			}
+		}(myOps)
+	}
+
+	wg.Wait()
 	elapsed := time.Since(start)
 
 	return Result{
 		Workload:   cfg.Workload,
 		Elapsed:    elapsed,
-		TotalOps:   int64(totalOps),
-		Throughput: float64(totalOps) / elapsed.Seconds(),
+		TotalOps:   int64(cfg.OperationCount),
+		Throughput: float64(cfg.OperationCount) / elapsed.Seconds(),
 		Read:       readRec.Stats(),
 		Update:     updateRec.Stats(),
 		Insert:     insertRec.Stats(),
