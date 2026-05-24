@@ -1,0 +1,19 @@
+============================================================
+  mkvs Benchmark Report
+============================================================
+  Date        : 2026-05-24 08:43:12
+  Commit      : f2162ea
+  Distribution: zipfian
+  Records     : 100000
+  Operations  : 50000 per workload
+  Value size  : 100 bytes
+  Workers     : 1
+============================================================
+
+--- Workload A: 50% Read / 50% Update (update-heavy) ---
+Elapsed    : 20ms
+Throughput : 2481120 ops/sec
+
+Latency breakdown:
+  Read  : n=24950     avg=93ns        p50=66ns        p95=153ns       p99=235ns       p999=3µs         max=79µs
+  Update: n=25050     avg=91ns        p50=69ns        p95=161ns       p99=243ns       p999=3µs         max=19µs
