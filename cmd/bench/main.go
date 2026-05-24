@@ -19,16 +19,21 @@ func main() {
 		workload  = flag.String("workload", "A", "workload A/B/C/D/F")
 		dist      = flag.String("dist", "zipfian", "key distribution: zipfian or uniform")
 		all       = flag.Bool("all", false, "run all workloads sequentially")
-		workers   = flag.Int("workers", 1, "number of parallel benchmark goroutines")
+		workers   = flag.Int("workers", 0, "goroutine数 (0=1/2/4/8のスケーリング計測)")
 	)
 	flag.Parse()
 
+	// workers=0 のとき自動的に複数スレッド数で計測する
+	scalingSteps := []int{1, 2, 4, 8}
+	if *workers != 0 {
+		scalingSteps = []int{*workers}
+	}
+
 	cfg := benchmark.Config{
-		RecordCount:    *records,
+		RecordCount:  *records,
 		OperationCount: *ops,
-		ValueSize:      *valueSize,
-		Distribution:   benchmark.Distribution(*dist),
-		Concurrency:    *workers,
+		ValueSize:    *valueSize,
+		Distribution: benchmark.Distribution(*dist),
 	}
 
 	var workloads []benchmark.Workload
@@ -39,12 +44,15 @@ func main() {
 	}
 
 	var results []benchmark.Result
-	for _, wl := range workloads {
-		cfg.Workload = wl
-		store := kvs.NewHashMap()
-		res := benchmark.Run(store, cfg)
-		_ = store.Close()
-		results = append(results, res)
+	for _, w := range scalingSteps {
+		cfg.Concurrency = w
+		for _, wl := range workloads {
+			cfg.Workload = wl
+			store := kvs.NewHashMap()
+			res := benchmark.Run(store, cfg)
+			_ = store.Close()
+			results = append(results, res)
+		}
 	}
 
 	path, err := writeReport(cfg, results)

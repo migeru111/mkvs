@@ -59,11 +59,16 @@ func renderReport(w io.Writer, cfg benchmark.Config, ref string, results []bench
 	fmt.Fprintf(w, "  Records     : %d\n", cfg.RecordCount)
 	fmt.Fprintf(w, "  Operations  : %d per workload\n", cfg.OperationCount)
 	fmt.Fprintf(w, "  Value size  : %d bytes\n", cfg.ValueSize)
-	fmt.Fprintf(w, "  Workers     : %d\n", cfg.Concurrency)
+	scaling := isScalingRun(results)
+	if scaling {
+		fmt.Fprintf(w, "  Workers     : scaling (1/2/4/8)\n")
+	} else {
+		fmt.Fprintf(w, "  Workers     : %d\n", cfg.Concurrency)
+	}
 	fmt.Fprintln(w, sep)
 
 	for _, res := range results {
-		fmt.Fprintf(w, "\n--- Workload %s ---\n", benchmark.Describe(res.Workload))
+		fmt.Fprintf(w, "\n--- Workload %s  workers=%d ---\n", benchmark.Describe(res.Workload), res.Workers)
 		fmt.Fprintf(w, "Elapsed    : %v\n", res.Elapsed.Round(time.Millisecond))
 		fmt.Fprintf(w, "Throughput : %.0f ops/sec\n", res.Throughput)
 		fmt.Fprintln(w, "\nLatency breakdown:")
@@ -81,20 +86,76 @@ func renderReport(w io.Writer, cfg benchmark.Config, ref string, results []bench
 		}
 	}
 
-	if len(results) > 1 {
+	if scaling {
+		renderScalingTable(w, results)
+	} else if len(results) > 1 {
+		renderSummaryTable(w, results)
+	}
+}
+
+// isScalingRun は results に複数の異なる Workers 値が含まれているか判定する。
+func isScalingRun(results []benchmark.Result) bool {
+	if len(results) == 0 {
+		return false
+	}
+	first := results[0].Workers
+	for _, r := range results[1:] {
+		if r.Workers != first {
+			return true
+		}
+	}
+	return false
+}
+
+func renderScalingTable(w io.Writer, results []benchmark.Result) {
+	sep := strings.Repeat("=", 70)
+
+	// ワークロード種別を順序を保って収集
+	seen := map[benchmark.Workload]bool{}
+	var wls []benchmark.Workload
+	for _, r := range results {
+		if !seen[r.Workload] {
+			seen[r.Workload] = true
+			wls = append(wls, r.Workload)
+		}
+	}
+
+	// ワークロードごとにスケーリング表を出力
+	for _, wl := range wls {
 		fmt.Fprintln(w, "\n"+sep)
-		fmt.Fprintln(w, "  Summary")
+		fmt.Fprintf(w, "  Scaling: %s\n", benchmark.Describe(wl))
 		fmt.Fprintln(w, sep)
-		fmt.Fprintf(w, "  %-12s  %12s  %10s  %10s\n", "Workload", "Throughput", "Avg Lat", "P99 Lat")
-		fmt.Fprintln(w, strings.Repeat("-", 60))
+		fmt.Fprintf(w, "  %7s  %14s  %10s  %10s\n", "Workers", "Throughput", "Avg Lat", "P99 Lat")
+		fmt.Fprintln(w, strings.Repeat("-", 50))
 		for _, r := range results {
-			fmt.Fprintf(w, "  %-12s  %9.0f ops/s  %10v  %10v\n",
-				benchmark.Describe(r.Workload),
+			if r.Workload != wl {
+				continue
+			}
+			fmt.Fprintf(w, "  %7d  %11.0f ops/s  %10s  %10s\n",
+				r.Workers,
 				r.Throughput,
 				fmtDuration(combinedAvg(r)),
 				fmtDuration(combinedP99(r)),
 			)
 		}
-		fmt.Fprintln(w, sep)
 	}
+	fmt.Fprintln(w, sep)
+}
+
+func renderSummaryTable(w io.Writer, results []benchmark.Result) {
+	sep := strings.Repeat("=", 60)
+	fmt.Fprintln(w, "\n"+sep)
+	fmt.Fprintln(w, "  Summary")
+	fmt.Fprintln(w, sep)
+	fmt.Fprintf(w, "  %-12s  %12s  %10s  %10s\n", "Workload", "Throughput", "Avg Lat", "P99 Lat")
+	fmt.Fprintln(w, strings.Repeat("-", 60))
+	for _, r := range results {
+		fmt.Fprintf(w, "  %-12s  %9.0f ops/s  %10v  %10v\n",
+			benchmark.Describe(r.Workload),
+			r.Throughput,
+			fmtDuration(combinedAvg(r)),
+			fmtDuration(combinedP99(r)),
+		)
+	}
+	fmt.Fprintln(w, sep)
 }

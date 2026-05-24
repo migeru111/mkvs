@@ -22,6 +22,7 @@ type Config struct {
 // Result holds the benchmark outcome.
 type Result struct {
 	Workload   Workload
+	Workers    int
 	Elapsed    time.Duration
 	TotalOps   int64
 	Throughput float64 // ops/sec
@@ -115,6 +116,7 @@ func Run(store kvs.KVS, cfg Config) Result {
 
 	return Result{
 		Workload:   cfg.Workload,
+		Workers:    workers,
 		Elapsed:    elapsed,
 		TotalOps:   int64(cfg.OperationCount),
 		Throughput: float64(cfg.OperationCount) / elapsed.Seconds(),
