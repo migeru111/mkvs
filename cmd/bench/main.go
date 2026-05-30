@@ -34,12 +34,12 @@ func selectStores(flag string) []storeEntry {
 
 func main() {
 	var (
-		records   = flag.Int("records", 100_000, "records to pre-load")
-		ops       = flag.Int("ops", 500_000, "operations to run per workload")
-		valueSize = flag.Int("valuesize", 100, "value size in bytes")
-		workload  = flag.String("workload", "A", "workload A/B/C/D/F")
-		dist      = flag.String("dist", "zipfian", "key distribution: zipfian or uniform")
-		all       = flag.Bool("all", false, "run all workloads sequentially")
+		records    = flag.Int("records", 100_000, "records to pre-load")
+		ops        = flag.Int("ops", 500_000, "operations to run per workload")
+		valueSize  = flag.Int("valuesize", 100, "value size in bytes")
+		workload   = flag.String("workload", "A", "workload A/B/C/D/F")
+		dist       = flag.String("dist", "zipfian", "key distribution: zipfian or uniform")
+		all        = flag.Bool("all", false, "run all workloads sequentially")
 		workers    = flag.Int("workers", 0, "goroutine数 (0=スケーリング計測)")
 		maxWorkers = flag.Int("maxworkers", 8, "スケーリング計測の最大ワーカー数 (2の累乗まで)")
 		store      = flag.String("store", "all", "KVS実装 (all/mutex/rwmutex)")
