@@ -1,6 +1,14 @@
 package kvs
 
-import "sync"
+import (
+	"bufio"
+	"fmt"
+	"log"
+	"log/slog"
+	"net"
+	"os"
+	"sync"
+)
 
 // HashMapMutex uses sync.Mutex — all operations are exclusive.
 type HashMapMutex struct {
@@ -87,3 +95,37 @@ func (h *HashMapRWMutex) Len() int {
 }
 
 func (h *HashMapRWMutex) Close() error { return nil }
+
+type HashMapMutexTCP struct {
+	mu   sync.Mutex
+	data map[string]string
+}
+
+func (h *HashMapMutexTCP) Get(key string) (string, bool) {
+	// 1. サーバー（localhost:8080）に接続
+	conn, err := net.Dial("tcp", "localhost:8080")
+	if err != nil {
+		log.Fatalf("サーバーへの接続に失敗しました: %v", err)
+	}
+	defer conn.Close()
+	fmt.Println("サーバーに接続しました。メッセージを入力してください（'quit' で終了）:")
+
+	// キーボード入力用のリーダー
+	inputReader := bufio.NewReader(os.Stdin)
+	// サーバーからの受信用のリーダー
+	serverReader := bufio.NewReader(conn)
+
+	_, err = conn.Write([]byte(key))
+	if err != nil {
+		log.Fatalf("サーバーへの送信に失敗しました: %v", err)
+	}
+	slog.Debug(key)
+
+	// 4. サーバーからの返信を受信して表示
+	response, err := serverReader.ReadString('\n')
+	if err != nil {
+		log.Fatalf("サーバーからの受信に失敗しました: %v", err)
+	}
+
+	slog.Debug(response)
+}
