@@ -3,10 +3,9 @@ package kvs
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"log/slog"
 	"net"
-	"os"
+	"strings"
 	"sync"
 )
 
@@ -101,31 +100,64 @@ type HashMapMutexTCP struct {
 	data map[string]string
 }
 
+func NewHashMapMutexTCP() *HashMapMutexTCP {
+	return &HashMapMutexTCP{data: make(map[string]string)}
+}
+
 func (h *HashMapMutexTCP) Get(key string) (string, bool) {
+
+	message := fmt.Sprintf("GET(%s)\n", key)
+
+	// GET: %s,%s\n
+	res := request(message)
+
+	return strings.Trim(res, "\n"), true
+
+}
+
+func (h *HashMapMutexTCP) Set(key, value string) error {
+
+	message := fmt.Sprintf("SET(%s,%s)\n", key, value)
+	_ = request(message)
+	return nil
+}
+
+func (h *HashMapMutexTCP) Delete(key string) bool {
+	return true
+}
+
+func (h *HashMapMutexTCP) Len() int {
+	return len(h.data)
+}
+
+func (h *HashMapMutexTCP) Close() error {
+	return nil
+}
+
+func request(message string) string {
 	// 1. サーバー（localhost:8080）に接続
 	conn, err := net.Dial("tcp", "localhost:8080")
 	if err != nil {
-		log.Fatalf("サーバーへの接続に失敗しました: %v", err)
+		slog.Error("サーバーへの接続に失敗しました", err)
 	}
 	defer conn.Close()
-	fmt.Println("サーバーに接続しました。メッセージを入力してください（'quit' で終了）:")
+	slog.Debug("サーバーに接続しました。")
 
-	// キーボード入力用のリーダー
-	inputReader := bufio.NewReader(os.Stdin)
 	// サーバーからの受信用のリーダー
 	serverReader := bufio.NewReader(conn)
 
-	_, err = conn.Write([]byte(key))
+	_, err = conn.Write([]byte(message))
 	if err != nil {
-		log.Fatalf("サーバーへの送信に失敗しました: %v", err)
+		slog.Error("サーバーへの送信に失敗しました", err)
 	}
-	slog.Debug(key)
+	slog.Debug(message)
 
 	// 4. サーバーからの返信を受信して表示
 	response, err := serverReader.ReadString('\n')
 	if err != nil {
-		log.Fatalf("サーバーからの受信に失敗しました: %v", err)
+		slog.Error("サーバーからの受信に失敗しました", err)
 	}
 
 	slog.Debug(response)
+	return response
 }

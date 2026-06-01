@@ -19,6 +19,7 @@ type storeEntry struct {
 var allStores = []storeEntry{
 	{"HashMap/Mutex", func() kvs.KVS { return kvs.NewHashMapMutex() }},
 	{"HashMap/RWMutex", func() kvs.KVS { return kvs.NewHashMapRWMutex() }},
+	{"HashMap/RWMutexTCP", func() kvs.KVS { return kvs.NewHashMapMutexTCP() }},
 }
 
 func selectStores(flag string) []storeEntry {

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"log/slog"
 	"net"
 	"strings"
 
@@ -58,7 +59,7 @@ func handleClient(conn net.Conn) {
 		cleanMessage := strings.TrimSpace(message)
 		ret := handleMessage(cleanMessage, store)
 		//fmt.Printf("[%s] 受信: %s\n", conn.RemoteAddr().String(), cleanMessage)
-		fmt.Println(ret)
+		slog.Debug(ret)
 		// オウム返し（Echo）のデータをクライアントに送信
 		//response := fmt.Sprintf("サーバーからの返信: %s\n", cleanMessage)
 		_, err = conn.Write([]byte(ret))
@@ -74,7 +75,7 @@ func handleMessage(message string, store kvs.KVS) string {
 	if strings.HasPrefix(message, "GET") {
 		key := strings.Trim(message, "GET()")
 		value, _ := store.Get(key)
-		return fmt.Sprintf("GET: %s,%s\n", key, value)
+		return value + "\n"
 	} else if strings.HasPrefix(message, "SET") {
 		fmt.Println(message)
 		keyvalue := strings.Split(strings.Trim(message, "SET()"), ",")
