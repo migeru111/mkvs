@@ -15,20 +15,20 @@ func main() {
 	// 1. TCPサーバーをポート8080で起動
 	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
-		log.Fatalf("サーバーの起動に失敗しました: %v", err)
+		slog.Error("サーバーの起動に失敗しました: %v", err)
 	}
 	defer listener.Close()
-	fmt.Println("サーバーがポート :8080 で待機中...")
+	slog.Debug("サーバーがポート :8080 で待機中...")
 
 	for {
 		// fmt.Println("%i回目のループ", i)
 		// 2. クライアントからの接続を待つ（接続されるまでここでブロック）
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Printf("接続の受け入れに失敗しました: %v", err)
+			slog.Error("接続の受け入れに失敗しました: %v", err)
 			continue
 		}
-		fmt.Printf("クライアントが接続しました: %s\n", conn.RemoteAddr().String())
+		slog.Debug("クライアントが接続しました: %s\n", conn.RemoteAddr().String())
 
 		// 3. 各クライアントの通信をgoroutine（分身）で並行処理
 		handleClient(conn)
@@ -47,7 +47,7 @@ func handleClient(conn net.Conn) {
 		// 改行コード（'\n'）までデータを読み込む
 		message, err := reader.ReadString('\n')
 		if err != nil {
-			log.Printf("クライアントが切断しました (%s): %v\n", conn.RemoteAddr().String(), err)
+			slog.Error("クライアントが切断しました (%s): %v\n", conn.RemoteAddr().String(), err)
 			return
 		}
 
@@ -71,15 +71,15 @@ func handleClient(conn net.Conn) {
 }
 
 func handleMessage(message string, store kvs.KVS) string {
-	fmt.Println(message)
+	slog.Debug(message)
 	if strings.HasPrefix(message, "GET") {
 		key := strings.Trim(message, "GET()")
 		value, _ := store.Get(key)
 		return value + "\n"
 	} else if strings.HasPrefix(message, "SET") {
-		fmt.Println(message)
+		slog.Debug("message: %s", message)
 		keyvalue := strings.Split(strings.Trim(message, "SET()"), ",")
-		fmt.Println(keyvalue)
+		slog.Debug("keyvalue: %s", keyvalue)
 		key, value := keyvalue[0], keyvalue[1]
 		store.Set(key, value)
 		return fmt.Sprintf("SET: %s,%s\n", key, value)

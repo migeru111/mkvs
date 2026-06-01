@@ -98,10 +98,22 @@ func (h *HashMapRWMutex) Close() error { return nil }
 type HashMapMutexTCP struct {
 	mu   sync.Mutex
 	data map[string]string
+	conn net.Conn
 }
 
 func NewHashMapMutexTCP() *HashMapMutexTCP {
-	return &HashMapMutexTCP{data: make(map[string]string)}
+	return &HashMapMutexTCP{
+		data: make(map[string]string),
+		conn: MakeConnectionForSending(),
+	}
+}
+
+func MakeConnectionForSending() net.Conn {
+	conn, err := net.Dial("tcp", "localhost:8080")
+	if err != nil {
+		slog.Error("サーバーへの接続に失敗しました", err)
+	}
+	return conn
 }
 
 func (h *HashMapMutexTCP) Get(key string) (string, bool) {
@@ -109,7 +121,7 @@ func (h *HashMapMutexTCP) Get(key string) (string, bool) {
 	message := fmt.Sprintf("GET(%s)\n", key)
 
 	// GET: %s,%s\n
-	res := request(message)
+	res := request(message, h)
 
 	return strings.Trim(res, "\n"), true
 
@@ -118,7 +130,7 @@ func (h *HashMapMutexTCP) Get(key string) (string, bool) {
 func (h *HashMapMutexTCP) Set(key, value string) error {
 
 	message := fmt.Sprintf("SET(%s,%s)\n", key, value)
-	_ = request(message)
+	_ = request(message, h)
 	return nil
 }
 
@@ -134,19 +146,16 @@ func (h *HashMapMutexTCP) Close() error {
 	return nil
 }
 
-func request(message string) string {
+func request(message string, kvs *HashMapMutexTCP) string {
 	// 1. サーバー（localhost:8080）に接続
-	conn, err := net.Dial("tcp", "localhost:8080")
-	if err != nil {
-		slog.Error("サーバーへの接続に失敗しました", err)
-	}
-	defer conn.Close()
+
+	//defer kvs.conn.Close()
 	slog.Debug("サーバーに接続しました。")
 
 	// サーバーからの受信用のリーダー
-	serverReader := bufio.NewReader(conn)
+	serverReader := bufio.NewReader(kvs.conn)
 
-	_, err = conn.Write([]byte(message))
+	_, err := kvs.conn.Write([]byte(message))
 	if err != nil {
 		slog.Error("サーバーへの送信に失敗しました", err)
 	}
