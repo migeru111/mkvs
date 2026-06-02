@@ -39,7 +39,7 @@ func main() {
 func handleClient(conn net.Conn) {
 	defer conn.Close() // 関数が終わったら確実に接続を閉じる
 
-	store := kvs.NewHashMapMutex()
+	store := kvs.NewHashMapRWMutex()
 	// クライアントからのデータを読み込むバッファを用意
 	reader := bufio.NewReader(conn)
 

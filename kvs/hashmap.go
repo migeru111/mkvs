@@ -15,6 +15,19 @@ type HashMapMutex struct {
 	data map[string]string
 }
 
+type HashMapRWMutexTCP struct {
+	mu   sync.RWMutex
+	data map[string]string
+	conn net.Conn
+}
+
+func NewHashMapRWMutexTCP() *HashMapRWMutexTCP {
+	return &HashMapRWMutexTCP{
+		data: make(map[string]string),
+		conn: MakeConnectionForSending(),
+	}
+}
+
 func NewHashMapMutex() *HashMapMutex {
 	return &HashMapMutex{data: make(map[string]string)}
 }
@@ -121,16 +134,23 @@ func (h *HashMapMutexTCP) Get(key string) (string, bool) {
 	message := fmt.Sprintf("GET(%s)\n", key)
 
 	// GET: %s,%s\n
-	res := request(message, h)
+	res := request(message, h.conn)
 
 	return strings.Trim(res, "\n"), true
 
 }
 
+func (h *HashMapRWMutexTCP) Get(key string) (string, bool) {
+	message := fmt.Sprintf("GET(%s)\n", key)
+
+	res := request(message, h.conn)
+	return strings.Trim(res, "\n"), true
+}
+
 func (h *HashMapMutexTCP) Set(key, value string) error {
 
 	message := fmt.Sprintf("SET(%s,%s)\n", key, value)
-	_ = request(message, h)
+	_ = request(message, h.conn)
 	return nil
 }
 
@@ -146,16 +166,16 @@ func (h *HashMapMutexTCP) Close() error {
 	return nil
 }
 
-func request(message string, kvs *HashMapMutexTCP) string {
+func request(message string, conn net.Conn) string {
 	// 1. サーバー（localhost:8080）に接続
 
 	//defer kvs.conn.Close()
 	slog.Debug("サーバーに接続しました。")
 
 	// サーバーからの受信用のリーダー
-	serverReader := bufio.NewReader(kvs.conn)
+	serverReader := bufio.NewReader(conn)
 
-	_, err := kvs.conn.Write([]byte(message))
+	_, err := conn.Write([]byte(message))
 	if err != nil {
 		slog.Error("サーバーへの送信に失敗しました", err)
 	}

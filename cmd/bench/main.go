@@ -19,7 +19,7 @@ type storeEntry struct {
 var allStores = []storeEntry{
 	{"HashMap/Mutex", func() kvs.KVS { return kvs.NewHashMapMutex() }},
 	{"HashMap/RWMutex", func() kvs.KVS { return kvs.NewHashMapRWMutex() }},
-	{"HashMap/RWMutexTCP", func() kvs.KVS { return kvs.NewHashMapMutexTCP() }},
+	{"HashMap/MutexTCP", func() kvs.KVS { return kvs.NewHashMapMutexTCP() }},
 }
 
 func selectStores(flag string) []storeEntry {
@@ -27,7 +27,9 @@ func selectStores(flag string) []storeEntry {
 	case "mutex":
 		return allStores[:1]
 	case "rwmutex":
-		return allStores[1:]
+		return allStores[1:2]
+	case "mutextcp":
+		return allStores[2:]
 	default:
 		return allStores
 	}
